@@ -142,6 +142,8 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
         Imgproc.distanceTransform(mat, dist, Imgproc.DIST_FAIR, Imgproc.DIST_MASK_PRECISE);
         Core.normalize(dist, dist, 0, 1, Core.NORM_MINMAX);
 
+        Imgproc.threshold(dist, dist, 0.5, 1, Imgproc.THRESH_BINARY);
+
 
         Mat dist_8u = new Mat(renderedImage.height(), renderedImage.width(), CvType.CV_8U);
         dist.convertTo(dist_8u, CvType.CV_8U);
