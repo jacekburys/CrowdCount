@@ -134,7 +134,7 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
 
         Imgproc.cvtColor(mat, mat, Imgproc.COLOR_BGR2GRAY);
 
-        Imgproc.GaussianBlur(mat, mat, new Size(3, 3), 0);
+        Imgproc.GaussianBlur(mat, mat, new Size(5, 5), 0);
         Imgproc.threshold(mat, mat, 0, 255, Imgproc.THRESH_OTSU);
 
         Mat dist = new Mat(renderedImage.height(), renderedImage.width(), CvType.CV_8UC4);
@@ -161,12 +161,14 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
 
         final TextView textView = (TextView)findViewById(R.id.textView);
 
+        //convert back to color
+        Imgproc.cvtColor(mat, mat, Imgproc.COLOR_GRAY2BGR);
 
-        /*
+
         for(int i = 0; i<count; i++){
             Imgproc.drawContours(mat, contours, i, new Scalar(255, 0, 0), 5);
         }
-        */
+
 
 
         Utils.matToBitmap(mat, bitmap);
