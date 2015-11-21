@@ -16,6 +16,7 @@ import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
+import org.opencv.core.Point;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
@@ -121,31 +122,32 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
     // FRAME PROCESSOR
 
     @Override
-    public void onFrameProcessed(RenderedImage renderedImage) {
+    public void onFrameProcessed(final RenderedImage renderedImage) {
 
-        Bitmap bitmap = Bitmap.createBitmap(renderedImage.width(),
-                renderedImage.height(),
-                Bitmap.Config.ARGB_8888);
-        bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(renderedImage.pixelData()));
+        // image size : 480 x 640
 
+        int width = 240;
+        int height = 320;
 
-        Mat mat = new Mat(renderedImage.height(), renderedImage.width(), CvType.CV_8UC4);
-        mat.put(0, 0, renderedImage.pixelData());
+        Mat orig = new Mat(renderedImage.height(), renderedImage.width(), CvType.CV_8UC4);
+        orig.put(0, 0, renderedImage.pixelData());
+
+        Mat mat = new Mat(height, width, CvType.CV_8UC4);
+        Imgproc.resize(orig, mat, new Size(width, height));
 
         Imgproc.cvtColor(mat, mat, Imgproc.COLOR_BGR2GRAY);
 
         Imgproc.GaussianBlur(mat, mat, new Size(5, 5), 0);
         Imgproc.threshold(mat, mat, 0, 255, Imgproc.THRESH_OTSU);
 
-        Mat dist = new Mat(renderedImage.height(), renderedImage.width(), CvType.CV_8UC4);
+        Mat dist = new Mat(height, width, CvType.CV_8UC4);
 
         Imgproc.distanceTransform(mat, dist, Imgproc.DIST_FAIR, Imgproc.DIST_MASK_PRECISE);
         Core.normalize(dist, dist, 0, 1, Core.NORM_MINMAX);
-
         Imgproc.threshold(dist, dist, 0.5, 1, Imgproc.THRESH_BINARY);
 
 
-        Mat dist_8u = new Mat(renderedImage.height(), renderedImage.width(), CvType.CV_8U);
+        Mat dist_8u = new Mat(height, width, CvType.CV_8U);
         dist.convertTo(dist_8u, CvType.CV_8U);
 
         List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
@@ -161,27 +163,52 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
             count = 0;
         }
 
-        final TextView textView = (TextView)findViewById(R.id.textView);
+
+
+        Mat markers = Mat.zeros(dist.size(), CvType.CV_32SC1);
 
         //convert back to color
-        Imgproc.cvtColor(mat, mat, Imgproc.COLOR_GRAY2BGR);
+        //Imgproc.cvtColor(mat, mat, Imgproc.COLOR_GRAY2BGR);
 
 
         for(int i = 0; i<count; i++){
-            Imgproc.drawContours(mat, contours, i, new Scalar(255, 0, 0), 5);
+            Imgproc.drawContours(markers, contours, i, Scalar.all(i+1), -1);
         }
 
+        boolean back = false;
+        int backX = 0;
+        int backY = 0;
+
+        for(int i = 3; i<dist.rows()-3; i++){
+            for(int j = 3; j<dist.cols()-3; j++){
+                if(back) break;
+                if(dist.get(i, j)[0] < 0.5){
+                    back = true;
+                    backX = j;
+                    backY = i;
+                }
+            }
+            if(back) break;
+        }
+
+        final int x = backX;
+        final int y = backY;
+
+        //marker for background
+        Imgproc.circle(markers, new Point(backY, backX), 3, new Scalar(255,255,255), -1);
+        //Imgproc.watershed(mat, markers);
 
 
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(mat, bitmap);
 
         final Bitmap imageBitmap = bitmap;
-
+        final TextView textView = (TextView)findViewById(R.id.textView);
         final ImageView imageView = (ImageView)findViewById(R.id.imageView);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                textView.setText(count + "objects");
+                textView.setText(x + ", " + y);
                 imageView.setImageBitmap(imageBitmap);
 
             }
