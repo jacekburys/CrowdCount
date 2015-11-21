@@ -123,27 +123,32 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
     @Override
     public void onFrameProcessed(RenderedImage renderedImage) {
 
-        Bitmap bitmap = Bitmap.createBitmap(renderedImage.width(),
-                renderedImage.height(),
-                Bitmap.Config.ARGB_8888);
-        bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(renderedImage.pixelData()));
+        // frame : 480 x 640
 
+        int width = 240;
+        int height = 320;
 
-        Mat mat = new Mat(renderedImage.height(), renderedImage.width(), CvType.CV_8UC4);
-        mat.put(0, 0, renderedImage.pixelData());
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+
+        Mat orig = new Mat(renderedImage.height(), renderedImage.width(), CvType.CV_8UC4);
+        orig.put(0, 0, renderedImage.pixelData());
+
+        Mat mat = new Mat(height, width, CvType.CV_8UC4);
+        Imgproc.resize(orig, mat, new Size(width, height));
 
         Imgproc.cvtColor(mat, mat, Imgproc.COLOR_BGR2GRAY);
 
         Imgproc.GaussianBlur(mat, mat, new Size(5, 5), 0);
         Imgproc.threshold(mat, mat, 0, 255, Imgproc.THRESH_OTSU);
 
-        Mat dist = new Mat(renderedImage.height(), renderedImage.width(), CvType.CV_8UC4);
+
+        Mat dist = new Mat(height, width, CvType.CV_8UC4);
 
         Imgproc.distanceTransform(mat, dist, Imgproc.DIST_FAIR, Imgproc.DIST_MASK_PRECISE);
         Core.normalize(dist, dist, 0, 1, Core.NORM_MINMAX);
 
 
-        Mat dist_8u = new Mat(renderedImage.height(), renderedImage.width(), CvType.CV_8U);
+        Mat dist_8u = new Mat(height, width, CvType.CV_8U);
         dist.convertTo(dist_8u, CvType.CV_8U);
 
         List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
