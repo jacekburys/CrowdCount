@@ -142,20 +142,18 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
         Imgproc.threshold(mat, mat, 0, 255, Imgproc.THRESH_OTSU);
 
 
-        Mat dist = new Mat(height, width, CvType.CV_8UC4);
+        //Mat dist = new Mat(height, width, CvType.CV_8UC4);
 
-        Imgproc.distanceTransform(mat, dist, Imgproc.DIST_FAIR, Imgproc.DIST_MASK_PRECISE);
-        Core.normalize(dist, dist, 0, 1, Core.NORM_MINMAX);
+        //Imgproc.distanceTransform(mat, dist, Imgproc.DIST_FAIR, Imgproc.DIST_MASK_PRECISE);
+        //Core.normalize(dist, dist, 0, 1, Core.NORM_MINMAX);
 
 
-        Mat dist_8u = new Mat(height, width, CvType.CV_8U);
-        dist.convertTo(dist_8u, CvType.CV_8U);
+        Mat mat_8u = new Mat(height, width, CvType.CV_8U);
+        mat.convertTo(mat_8u, CvType.CV_8U);
 
         List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
 
-
-
-        Imgproc.findContours(dist_8u, contours, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+        Imgproc.findContours(mat_8u, contours, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
 
         final int count;
         if(contours != null){
@@ -173,8 +171,6 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
         for(int i = 0; i<count; i++){
             Imgproc.drawContours(mat, contours, i, new Scalar(255, 0, 0), 5);
         }
-
-
 
         Utils.matToBitmap(mat, bitmap);
 
