@@ -140,26 +140,19 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
 
         Imgproc.cvtColor(mat, mat, Imgproc.COLOR_BGR2GRAY);
 
-        Imgproc.GaussianBlur(mat, mat, new Size(5, 5), 0);
+        Imgproc.GaussianBlur(mat, mat, new Size(5, 5), 1);
         Imgproc.threshold(mat, mat, 0, 255, Imgproc.THRESH_OTSU);
-
-
-        //Mat dist = new Mat(height, width, CvType.CV_8UC4);
-
-        //Imgproc.distanceTransform(mat, dist, Imgproc.DIST_FAIR, Imgproc.DIST_MASK_PRECISE);
-        //Core.normalize(dist, dist, 0, 1, Core.NORM_MINMAX);
+        Imgproc.medianBlur(mat, mat, 5);
 
         Mat mat_8u = new Mat(height, width, CvType.CV_8U);
         mat.convertTo(mat_8u, CvType.CV_8U);
 
         //erode
-        Imgproc.dilate(mat_8u, mat_8u, Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(10, 10)));
+        Imgproc.dilate(mat_8u, mat_8u, Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(5, 5)));
 
         List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
 
         Imgproc.findContours(mat_8u, contours, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
-
-
 
         Collections.sort(contours, new ContourComparator());
 
@@ -179,14 +172,13 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
             count = 0;
         }
 
-        final TextView textView = (TextView)findViewById(R.id.textView);
-
         //convert back to color
         Imgproc.cvtColor(mat, mat, Imgproc.COLOR_GRAY2BGR);
 
+        Scalar[] arr = {new Scalar(255, 0, 0), new Scalar(0, 255, 0), new Scalar(0, 0, 255)};
 
         for(int i = 0; i<count; i++){
-            Imgproc.drawContours(mat, contours, i, new Scalar(255, 0, 0), 5);
+            Imgproc.drawContours(mat, contours, i, arr[i%3], 3);
         }
 
         Utils.matToBitmap(mat, bitmap);
@@ -194,11 +186,12 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
         final Bitmap imageBitmap = bitmap;
         final int finalCount = count;
 
+        final TextView textView = (TextView)findViewById(R.id.textView);
         final ImageView imageView = (ImageView)findViewById(R.id.imageView);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                textView.setText(finalCount + "objects");
+                textView.setText(finalCount + " objects");
                 imageView.setImageBitmap(imageBitmap);
 
             }
