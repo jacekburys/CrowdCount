@@ -143,17 +143,17 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
         Imgproc.GaussianBlur(mat, mat, new Size(5, 5), 0);
         Imgproc.threshold(mat, mat, 0, 255, Imgproc.THRESH_OTSU);
 
-        Imgproc.erode(mat, mat, Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(3, 3)));
-
 
         //Mat dist = new Mat(height, width, CvType.CV_8UC4);
 
         //Imgproc.distanceTransform(mat, dist, Imgproc.DIST_FAIR, Imgproc.DIST_MASK_PRECISE);
         //Core.normalize(dist, dist, 0, 1, Core.NORM_MINMAX);
 
-
         Mat mat_8u = new Mat(height, width, CvType.CV_8U);
         mat.convertTo(mat_8u, CvType.CV_8U);
+
+        //erode
+        Imgproc.dilate(mat_8u, mat_8u, Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(10, 10)));
 
         List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
 
@@ -169,7 +169,7 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
             biggestSize = contours.get(0).toList().size();
             count = 0;
             for(MatOfPoint pt : contours){
-                if(pt.toList().size() < biggestSize / 4.0){
+                if(pt.toList().size() < biggestSize / 3.0){
                     break;
                 }
                 count++;
