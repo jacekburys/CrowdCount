@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
@@ -38,6 +39,11 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
     private FrameProcessor frameProcessor;
 
     private boolean processing = false;
+
+    private int MIN_TEMP = 192;
+    private double DIST_THRESH = 150;
+
+    private int TOTAL = 0;
 
     synchronized private void setProcessing(boolean processing){
         this.processing = processing;
@@ -134,6 +140,9 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
 
         // frame : 480 x 640
 
+        prevPoints = currPoints;
+        currPoints = new ArrayList<>();
+
         int width = 360;
         int height = 480;
 
@@ -219,6 +228,9 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
 
         // match points
 
+        HashMap<Point, Integer> labelMap = new HashMap<>();
+        int LABEL = 0;
+
         List<PointsDist> dists = new ArrayList<>();
 
         for(int i=0; i<prevPoints.size(); i++) {
@@ -233,12 +245,29 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
         HashSet<Point> usedCurr = new HashSet<>();
 
         for(PointsDist d : dists) {
+            if(d.dist > DIST_THRESH) break;
             if(usedPrev.contains(d.p1) || usedCurr.contains(d.p2)) continue;
 
             Imgproc.line(mat, d.p1, d.p2, new Scalar(255, 0, 0), 3);
 
             usedPrev.add(d.p1);
             usedCurr.add(d.p2);
+
+            if(labelMap.get(d.p1) != null){
+                labelMap.put(d.p2, labelMap.get(d.p1));
+            }else{
+                labelMap.put(d.p2, LABEL);
+                LABEL++;
+            }
+
+        }
+
+        for(Point p : currPoints) {
+            if(!labelMap.containsKey(p)) {
+                labelMap.put(p, LABEL);
+                LABEL++;
+            }
+            Imgproc.putText(mat, "" + labelMap.get(p), p, 0, 1, new Scalar(255, 0, 255));
         }
 
         //
@@ -260,10 +289,14 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
             }
         });
 
-        List<Point> temp = prevPoints;
-        prevPoints = currPoints;
-        currPoints = prevPoints;
-        currPoints.clear();
+
+/*
+        try{
+            Thread.sleep(100);
+        }catch (Exception e){
+
+        }
+*/
 
         setProcessing(false);
     }
