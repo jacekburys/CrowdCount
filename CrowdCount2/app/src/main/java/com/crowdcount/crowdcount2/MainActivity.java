@@ -16,7 +16,9 @@ import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfPoint;
+import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
+import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
@@ -171,6 +173,7 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
                     break;
                 }
                 count++;
+
             }
         }else{
             biggestSize = 0;
@@ -178,12 +181,31 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
         }
 
         //convert back to color
-        //Imgproc.cvtColor(mat, mat, Imgproc.COLOR_GRAY2BGR);
+        Imgproc.cvtColor(mat, mat, Imgproc.COLOR_GRAY2BGR);
 
         Scalar[] arr = {new Scalar(255, 0, 0), new Scalar(0, 255, 0), new Scalar(0, 0, 255)};
 
+        MatOfPoint2f         approxCurve = new MatOfPoint2f();
+
         for(int i = 0; i<count; i++){
             Imgproc.drawContours(mat, contours, i, arr[i%3], 3);
+
+            //Convert contours(i) from MatOfPoint to MatOfPoint2f
+            MatOfPoint2f contour2f = new MatOfPoint2f( contours.get(i).toArray() );
+            //Processing on mMOP2f1 which is in type MatOfPoint2f
+            double approxDistance = Imgproc.arcLength(contour2f, true)*0.02;
+            Imgproc.approxPolyDP(contour2f, approxCurve, approxDistance, true);
+
+            //Convert back to MatOfPoint
+            MatOfPoint points = new MatOfPoint( approxCurve.toArray() );
+
+            // Get bounding rect of contour
+            Rect rect = Imgproc.boundingRect(points);
+
+            // draw enclosing rectangle (all same color, but you could use variable i to make them unique)
+
+            Imgproc.rectangle(mat, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height),
+                    arr[i%3], Imgproc.LINE_4);
         }
 
         Utils.matToBitmap(mat, bitmap);
