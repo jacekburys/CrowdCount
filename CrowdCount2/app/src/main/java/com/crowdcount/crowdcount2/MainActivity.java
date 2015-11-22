@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 
 
@@ -125,6 +126,9 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
 
     // FRAME PROCESSOR
 
+    private List<Point> prevPoints = new ArrayList<>();
+    private List<Point> currPoints = new ArrayList<>();
+
     @Override
     public void onFrameProcessed(final RenderedImage renderedImage) {
 
@@ -154,8 +158,8 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
         mat.convertTo(mat_8u, CvType.CV_8U);
 
 
-        //erode
-        Imgproc.dilate(mat_8u, mat_8u, Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(5, 5)));
+        //dilate
+        //Imgproc.dilate(mat_8u, mat_8u, Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(5, 5)));
 
         List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
 
@@ -165,15 +169,16 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
 
         int biggestSize;
         int count;
+        int COUNT_LIMIT = 5;
         if(contours != null && contours.size() > 0){
             biggestSize = contours.get(0).toList().size();
             count = 0;
             for(MatOfPoint pt : contours){
-                if(pt.toList().size() < biggestSize / 3.0){
+                if(pt.toList().size() < biggestSize / 2.0){
                     break;
                 }
                 count++;
-
+                if(count >= COUNT_LIMIT) break;
             }
         }else{
             biggestSize = 0;
@@ -185,7 +190,7 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
 
         Scalar[] arr = {new Scalar(255, 0, 0), new Scalar(0, 255, 0), new Scalar(0, 0, 255)};
 
-        MatOfPoint2f         approxCurve = new MatOfPoint2f();
+        MatOfPoint2f approxCurve = new MatOfPoint2f();
 
         for(int i = 0; i<count; i++){
             Imgproc.drawContours(mat, contours, i, arr[i%3], 3);
@@ -205,8 +210,39 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
             // draw enclosing rectangle (all same color, but you could use variable i to make them unique)
 
             Imgproc.rectangle(mat, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height),
-                    arr[i%3], Imgproc.LINE_4);
+                    arr[i % 3], Imgproc.LINE_4);
+            Point center = new Point(rect.x + rect.width/2, rect.y + rect.height/2);
+            Imgproc.circle(mat, center, 5, new Scalar(255, 255, 0), -1);
+
+            currPoints.add(center);
         }
+
+        // match points
+
+        List<PointsDist> dists = new ArrayList<>();
+
+        for(int i=0; i<prevPoints.size(); i++) {
+            for(int j=0; j<currPoints.size(); j++) {
+                dists.add(new PointsDist(prevPoints.get(i), currPoints.get(j)));
+            }
+        }
+
+        Collections.sort(dists, new DistComparator());
+
+        HashSet<Point> usedPrev = new HashSet<>();
+        HashSet<Point> usedCurr = new HashSet<>();
+
+        for(PointsDist d : dists) {
+            if(usedPrev.contains(d.p1) || usedCurr.contains(d.p2)) continue;
+
+            Imgproc.line(mat, d.p1, d.p2, new Scalar(255, 0, 0), 3);
+
+            usedPrev.add(d.p1);
+            usedCurr.add(d.p2);
+        }
+
+        //
+
 
         Utils.matToBitmap(mat, bitmap);
 
@@ -224,9 +260,31 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
             }
         });
 
+        List<Point> temp = prevPoints;
+        prevPoints = currPoints;
+        currPoints = prevPoints;
+        currPoints.clear();
+
         setProcessing(false);
     }
 
+    private class PointsDist {
+        public Point p1, p2;
+        public double dist;
+        public PointsDist(Point p1, Point p2) {
+            this.p1 = p1;
+            this.p2 = p2;
+            this.dist = Math.pow(Math.abs(p1.x - p2.x), 2) + Math.pow(Math.abs(p1.y - p2.y), 2);
+        }
+    }
+
+
+    private class DistComparator implements Comparator<PointsDist> {
+        @Override
+        public int compare(PointsDist lhs, PointsDist rhs) {
+            return (int)(lhs.dist - rhs.dist);
+        }
+    }
 
     private class ContourComparator implements Comparator<MatOfPoint> {
         @Override
