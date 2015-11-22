@@ -22,6 +22,8 @@ import org.opencv.imgproc.Imgproc;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -125,8 +127,8 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
 
         // frame : 480 x 640
 
-        int width = 240;
-        int height = 320;
+        int width = 360;
+        int height = 480;
 
         Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
 
@@ -140,6 +142,8 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
 
         Imgproc.GaussianBlur(mat, mat, new Size(5, 5), 0);
         Imgproc.threshold(mat, mat, 0, 255, Imgproc.THRESH_OTSU);
+
+        Imgproc.erode(mat, mat, Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(3, 3)));
 
 
         //Mat dist = new Mat(height, width, CvType.CV_8UC4);
@@ -155,6 +159,8 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
 
         Imgproc.findContours(mat_8u, contours, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
 
+        Collections.sort(contours, new ContourComparator());
+
         final int count;
         if(contours != null){
             count = contours.size();
@@ -168,7 +174,7 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
         Imgproc.cvtColor(mat, mat, Imgproc.COLOR_GRAY2BGR);
 
 
-        for(int i = 0; i<count; i++){
+        for(int i = 0; i<1; i++){
             Imgproc.drawContours(mat, contours, i, new Scalar(255, 0, 0), 5);
         }
 
@@ -189,4 +195,11 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
         setProcessing(false);
     }
 
+
+    private class ContourComparator implements Comparator<MatOfPoint> {
+        @Override
+        public int compare(MatOfPoint lhs, MatOfPoint rhs) {
+            return rhs.toList().size()-lhs.toList().size();
+        }
+    }
 }
