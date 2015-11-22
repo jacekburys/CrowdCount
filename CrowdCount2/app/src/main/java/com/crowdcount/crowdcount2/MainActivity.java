@@ -23,6 +23,8 @@ import org.opencv.imgproc.Imgproc;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 
@@ -124,10 +126,13 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
     @Override
     public void onFrameProcessed(final RenderedImage renderedImage) {
 
-        // image size : 480 x 640
+        // frame : 480 x 640
 
-        int width = 240;
-        int height = 320;
+        int width = 360;
+        int height = 480;
+
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+
 
         Mat orig = new Mat(renderedImage.height(), renderedImage.width(), CvType.CV_8UC4);
         orig.put(0, 0, renderedImage.pixelData());
@@ -135,80 +140,63 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
         Mat mat = new Mat(height, width, CvType.CV_8UC4);
         Imgproc.resize(orig, mat, new Size(width, height));
 
+
         Imgproc.cvtColor(mat, mat, Imgproc.COLOR_BGR2GRAY);
 
-        Imgproc.GaussianBlur(mat, mat, new Size(5, 5), 0);
+        Imgproc.GaussianBlur(mat, mat, new Size(5, 5), 1);
         Imgproc.threshold(mat, mat, 0, 255, Imgproc.THRESH_OTSU);
-
-        Mat dist = new Mat(height, width, CvType.CV_8UC4);
-
-        Imgproc.distanceTransform(mat, dist, Imgproc.DIST_FAIR, Imgproc.DIST_MASK_PRECISE);
-        Core.normalize(dist, dist, 0, 1, Core.NORM_MINMAX);
-        Imgproc.threshold(dist, dist, 0.5, 1, Imgproc.THRESH_BINARY);
+        Imgproc.medianBlur(mat, mat, 5);
 
 
-        Mat dist_8u = new Mat(height, width, CvType.CV_8U);
-        dist.convertTo(dist_8u, CvType.CV_8U);
+        Mat mat_8u = new Mat(height, width, CvType.CV_8U);
+        mat.convertTo(mat_8u, CvType.CV_8U);
+
+
+        //erode
+        Imgproc.dilate(mat_8u, mat_8u, Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(5, 5)));
 
         List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
 
+        Imgproc.findContours(mat_8u, contours, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
 
+        Collections.sort(contours, new ContourComparator());
 
-        Imgproc.findContours(dist_8u, contours, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
-
-        final int count;
-        if(contours != null){
-            count = contours.size();
+        int biggestSize;
+        int count;
+        if(contours != null && contours.size() > 0){
+            biggestSize = contours.get(0).toList().size();
+            count = 0;
+            for(MatOfPoint pt : contours){
+                if(pt.toList().size() < biggestSize / 3.0){
+                    break;
+                }
+                count++;
+            }
         }else{
+            biggestSize = 0;
             count = 0;
         }
-
-
-
-        Mat markers = Mat.zeros(dist.size(), CvType.CV_32SC1);
 
         //convert back to color
         //Imgproc.cvtColor(mat, mat, Imgproc.COLOR_GRAY2BGR);
 
+        Scalar[] arr = {new Scalar(255, 0, 0), new Scalar(0, 255, 0), new Scalar(0, 0, 255)};
 
         for(int i = 0; i<count; i++){
-            Imgproc.drawContours(markers, contours, i, Scalar.all(i+1), -1);
+            Imgproc.drawContours(mat, contours, i, arr[i%3], 3);
         }
 
-        boolean back = false;
-        int backX = 0;
-        int backY = 0;
-
-        for(int i = 3; i<dist.rows()-3; i++){
-            for(int j = 3; j<dist.cols()-3; j++){
-                if(back) break;
-                if(dist.get(i, j)[0] < 0.5){
-                    back = true;
-                    backX = j;
-                    backY = i;
-                }
-            }
-            if(back) break;
-        }
-
-        final int x = backX;
-        final int y = backY;
-
-        //marker for background
-        Imgproc.circle(markers, new Point(backY, backX), 3, new Scalar(255,255,255), -1);
-        //Imgproc.watershed(mat, markers);
-
-
-        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(mat, bitmap);
 
         final Bitmap imageBitmap = bitmap;
+        final int finalCount = count;
+
         final TextView textView = (TextView)findViewById(R.id.textView);
         final ImageView imageView = (ImageView)findViewById(R.id.imageView);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                textView.setText(x + ", " + y);
+                textView.setText(finalCount + " objects");
                 imageView.setImageBitmap(imageBitmap);
 
             }
@@ -217,4 +205,11 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
         setProcessing(false);
     }
 
+
+    private class ContourComparator implements Comparator<MatOfPoint> {
+        @Override
+        public int compare(MatOfPoint lhs, MatOfPoint rhs) {
+            return rhs.toList().size()-lhs.toList().size();
+        }
+    }
 }
