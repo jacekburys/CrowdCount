@@ -159,12 +159,23 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
 
         Imgproc.findContours(mat_8u, contours, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
 
+
+
         Collections.sort(contours, new ContourComparator());
 
-        final int count;
-        if(contours != null){
-            count = contours.size();
+        int biggestSize;
+        int count;
+        if(contours != null && contours.size() > 0){
+            biggestSize = contours.get(0).toList().size();
+            count = 0;
+            for(MatOfPoint pt : contours){
+                if(pt.toList().size() < biggestSize / 4.0){
+                    break;
+                }
+                count++;
+            }
         }else{
+            biggestSize = 0;
             count = 0;
         }
 
@@ -174,19 +185,20 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
         Imgproc.cvtColor(mat, mat, Imgproc.COLOR_GRAY2BGR);
 
 
-        for(int i = 0; i<1; i++){
+        for(int i = 0; i<count; i++){
             Imgproc.drawContours(mat, contours, i, new Scalar(255, 0, 0), 5);
         }
 
         Utils.matToBitmap(mat, bitmap);
 
         final Bitmap imageBitmap = bitmap;
+        final int finalCount = count;
 
         final ImageView imageView = (ImageView)findViewById(R.id.imageView);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                textView.setText(count + "objects");
+                textView.setText(finalCount + "objects");
                 imageView.setImageBitmap(imageBitmap);
 
             }
