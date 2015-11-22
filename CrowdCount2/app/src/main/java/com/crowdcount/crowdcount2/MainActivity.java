@@ -41,7 +41,7 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
     private boolean processing = false;
 
     private int MIN_TEMP = 192;
-    private double DIST_THRESH = 150;
+    private double DIST_THRESH = 4000;
 
     private int TOTAL = 0;
 
@@ -134,6 +134,15 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
 
     private List<Point> prevPoints = new ArrayList<>();
     private List<Point> currPoints = new ArrayList<>();
+
+    private WebRequestManager webRequestManager = new WebRequestManager();
+
+    private void sendTotal() {
+        webRequestManager.execute("", "" + TOTAL, "");
+    }
+
+    private int LABEL = 0;
+    HashMap<Point, Integer> labelMap = new HashMap<>();
 
     @Override
     public void onFrameProcessed(final RenderedImage renderedImage) {
@@ -228,14 +237,17 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
 
         // match points
 
-        HashMap<Point, Integer> labelMap = new HashMap<>();
-        int LABEL = 0;
+
+
 
         List<PointsDist> dists = new ArrayList<>();
 
         for(int i=0; i<prevPoints.size(); i++) {
             for(int j=0; j<currPoints.size(); j++) {
-                dists.add(new PointsDist(prevPoints.get(i), currPoints.get(j)));
+                PointsDist p = new PointsDist(prevPoints.get(i), currPoints.get(j));
+                if(p.dist < DIST_THRESH){
+                    dists.add(p);
+                }
             }
         }
 
@@ -245,7 +257,7 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
         HashSet<Point> usedCurr = new HashSet<>();
 
         for(PointsDist d : dists) {
-            if(d.dist > DIST_THRESH) break;
+
             if(usedPrev.contains(d.p1) || usedCurr.contains(d.p2)) continue;
 
             Imgproc.line(mat, d.p1, d.p2, new Scalar(255, 0, 0), 3);
@@ -283,7 +295,7 @@ public class MainActivity extends Activity  implements Device.Delegate, FramePro
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                textView.setText(finalCount + " objects");
+                textView.setText(finalCount + " people");
                 imageView.setImageBitmap(imageBitmap);
 
             }
